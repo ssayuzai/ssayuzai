@@ -117,6 +117,14 @@ class AppTest(unittest.TestCase):
     def test_health_check(self):
         self.assertEqual(self.client.get("/healthz").get_json(), {"ok": True})
 
+    def test_fonts_are_served_and_cached(self):
+        response = self.client.get("/fonts/GmarketSansTTFMedium.woff2")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "font/woff2")
+        self.assertIn("max-age=31536000", response.headers["Cache-Control"])
+        response.close()
+        self.assertEqual(self.client.get("/fonts/../app.py").status_code, 404)  # 다른 파일은 못 꺼내 가요
+
     # ---------- 질문하기와 기록 저장 ----------
 
     def test_ask_requires_login_and_json(self):

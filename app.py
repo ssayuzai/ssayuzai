@@ -14,6 +14,7 @@ r"""
 """
 
 import json
+import mimetypes
 import os
 import re
 import secrets
@@ -69,6 +70,9 @@ def _secret_key() -> str:
     path.write_text(key, encoding="utf-8")
     return key
 
+
+# 윈도우는 .woff2(웹 글꼴) 파일 종류를 모를 때가 있어서 알려 줘요
+mimetypes.add_type("font/woff2", ".woff2")
 
 db.init()
 app = Flask(__name__)
@@ -134,6 +138,12 @@ def _log_in(user_id: int) -> None:
 @app.get("/")
 def index():
     return send_from_directory(WEB_DIR, "index.html")
+
+
+@app.get("/fonts/<path:name>")
+def fonts(name: str):
+    """글꼴 파일(G마켓 산스)을 보내요. 한 번 받으면 브라우저가 1년 동안 기억해서 다시 받지 않아요."""
+    return send_from_directory(WEB_DIR / "fonts", name, max_age=365 * 24 * 3600)
 
 
 @app.get("/healthz")
