@@ -125,6 +125,32 @@ class AppTest(unittest.TestCase):
         response.close()
         self.assertEqual(self.client.get("/fonts/../app.py").status_code, 404)  # 다른 파일은 못 꺼내 가요
 
+    def test_diagnose_requires_login(self):
+        self.assertEqual(self.client.get("/api/diagnose/search").status_code, 401)
+
+    def test_search_fallback_to_ollama(self):
+        import search
+
+        def ddg_blocked(query, max_results):
+            raise search.SearchError("막힘")
+
+        def fake_ollama(query, max_results):
+            return [{"title": "t", "url": "https://example.com", "snippet": "s", "content": "c", "engine": "ollama"}]
+
+        original = (search._duckduckgo, search._ollama_search, search.FALLBACK, search._duckduckgo_down_until)
+        search._duckduckgo, search._ollama_search = ddg_blocked, fake_ollama
+        try:
+            search.FALLBACK, search._duckduckgo_down_until = "", 0.0
+            with self.assertRaises(search.SearchError):  # 예비 검색이 꺼져 있으면 오류 그대로
+                search.search("세종대왕")
+            search.FALLBACK = "ollama"
+            os.environ["OLLAMA_API_KEY"] = "test-key"
+            self.assertEqual(search.search("세종대왕")[0]["engine"], "ollama")  # 켜져 있으면 대신 찾아요
+            self.assertGreater(search._duckduckgo_down_until, 0)  # 잠시 DuckDuckGo를 건너뛰어요
+        finally:
+            os.environ.pop("OLLAMA_API_KEY", None)
+            search._duckduckgo, search._ollama_search, search.FALLBACK, search._duckduckgo_down_until = original
+
     # ---------- 질문하기와 기록 저장 ----------
 
     def test_ask_requires_login_and_json(self):

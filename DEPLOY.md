@@ -107,6 +107,19 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
    - **검색이 되는지:** "DuckDuckGo가 잠시 검색을 막았어요"가 계속 나오면 서버에서 검색이 막힌 거예요.
    - **걸린 시간:** 원문 문장과 AI 정리가 각각 몇 초 만에 나오는지
 
+## 서버에서 DuckDuckGo 검색이 안 될 때
+
+Render 같은 데이터센터 서버에서는 DuckDuckGo 연결이 막힐 수 있어요.
+
+1. 로그인한 상태에서 `https://내주소.onrender.com/api/diagnose/search` 를 열면, 서버에서 DuckDuckGo 연결을 단계별로 시험한 결과가 나와요.
+2. 검색이 계속 안 되면 Render의 **Environment**에 아래 값을 추가하면, DuckDuckGo 대신 **Ollama 웹 검색**(공식 API, 같은 API 키 사용)으로 찾아요.
+
+| Key | Value |
+|---|---|
+| `SSAYUZ_SEARCH_FALLBACK` | `ollama` |
+
+> Ollama 웹 검색에는 DuckDuckGo 같은 세이프서치 설정이 없어요. 대신 성인 사이트 주소 거르기는 그대로 해요.
+
 ## 5. 모델 바꾸기, 설정 바꾸기
 
 Render 서비스 화면 → **Environment** → 값을 바꾸고 **Save Changes**를 누르면 서버가 다시 켜져요.

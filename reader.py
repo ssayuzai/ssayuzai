@@ -152,6 +152,18 @@ def _extract(raw: bytes, url: str, **mode) -> str:
     return re.sub(r"\n\s*\n+", "\n", text).strip()
 
 
+def _read_item(item: dict) -> str:
+    """검색 결과 하나를 읽어요.
+
+    검색엔진이 본문을 이미 줬으면(Ollama 웹 검색) 그걸 써요. 페이지를 다시 받지 않아서 빨라요.
+    """
+    content = item.get("content") or ""
+    text = re.sub(r"\n\s*\n+", "\n", re.sub(r"[ \t]+", " ", content)).strip()
+    if len(text) >= MIN_CHARS:
+        return text[:MAX_CHARS]
+    return read_page(item["url"])
+
+
 def read_results(results: list[dict], want: int = 3, on_skip=None) -> list[dict]:
     """검색 결과 위쪽 페이지들을 **동시에** 받아서, 읽은 것 중 순위가 높은 want 개를 골라요.
 
@@ -162,7 +174,7 @@ def read_results(results: list[dict], want: int = 3, on_skip=None) -> list[dict]
     """
     candidates = results[: want + EXTRA_PAGES]  # 못 읽는 페이지를 생각해서 몇 개 더 받아요
     pool = ThreadPoolExecutor(max_workers=len(candidates) or 1)
-    futures = {pool.submit(read_page, item["url"]): rank for rank, item in enumerate(candidates)}
+    futures = {pool.submit(_read_item, item): rank for rank, item in enumerate(candidates)}
     texts = {}
     try:
         for future in as_completed(futures, timeout=READ_DEADLINE):

@@ -132,6 +132,7 @@ ollama pull qwen3.5:2b
 | `SSAYUZ_READ_DEADLINE` | 페이지 읽기 최대 시간(초) | 7 |
 | `SSAYUZ_HTTPS` | `1`이면 HTTPS용 로그인 쿠키 | 없음 |
 | `SSAYUZ_INVITE_CODE` | 이 코드를 아는 사람만 회원가입 | 없음 (누구나 가입) |
+| `SSAYUZ_SEARCH_FALLBACK` | `ollama`면 DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾아요 (`OLLAMA_API_KEY` 필요, 세이프서치 설정은 없고 성인 사이트 거르기만 해요) | 없음 (끔) |
 | `SECRET_KEY` | 로그인 비밀 열쇠 | `data/secret_key` 파일 |
 
 ## 데이터 저장 (`db.py`)

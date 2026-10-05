@@ -54,7 +54,9 @@ def run(question: str, history: list[dict] = ()):
     t = time.monotonic()
     yield {"type": "step", "text": "검색하는 중"}
     results = search(understood.rstrip("?!. "), max_results=RESULTS_TO_SEARCH)
-    yield {"type": "done", "note": f"결과 {len(results)}개", "sec": time.monotonic() - t}
+    used_fallback = bool(results) and results[0].get("engine") == "ollama"
+    note = f"결과 {len(results)}개" + (" (Ollama 웹 검색)" if used_fallback else "")
+    yield {"type": "done", "note": note, "sec": time.monotonic() - t}
 
     # 3) 위쪽 페이지들을 동시에 읽어요 (최대 7초)
     t = time.monotonic()

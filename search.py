@@ -1,11 +1,13 @@
 r"""
-2단계: 검색만 하는 프로그램이에요.
-DuckDuckGo에서 검색해서 제목 / 링크 / 요약을 보여줘요.
+검색 프로그램이에요. DuckDuckGo에서 검색해서 제목 / 링크 / 요약을 보여줘요.
+(DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾는 예비 검색도 있어요. 기본은 꺼져 있어요)
 
 실행: .venv\Scripts\python.exe search.py 목성의 위성
 """
 
+import os
 import sys
+import time
 from urllib.parse import urlparse
 
 from ddgs.engines.duckduckgo import Duckduckgo
@@ -16,6 +18,11 @@ REGION = "kr-kr"
 SAFE_SEARCH = "1"
 # 검색이 이 시간(초)보다 오래 걸리면 포기해요
 TIMEOUT = 10
+# 예비 검색: "ollama" 로 정하면 DuckDuckGo가 안 될 때 Ollama 웹 검색을 써요 (OLLAMA_API_KEY 필요)
+FALLBACK = os.environ.get("SSAYUZ_SEARCH_FALLBACK", "")
+# DuckDuckGo가 한 번 안 되면, 이 시간(초) 동안은 바로 예비 검색을 써요 (매번 10초씩 기다리지 않게)
+DUCKDUCKGO_RETRY_AFTER = 600
+_duckduckgo_down_until = 0.0
 # 세이프서치 두 번째 안전망: 사이트 주소에 이 말이 들어 있으면 결과에서 빼요
 # ("sex"는 Sussex, Essex 같은 정상 주소까지 막아서 넣지 않았어요)
 BLOCKED_HOST_WORDS = (
@@ -51,11 +58,54 @@ def is_blocked(url: str) -> bool:
 
 
 def search(query: str, max_results: int = 5) -> list[dict]:
-    """검색어를 DuckDuckGo에 물어보고 결과를 돌려줘요.
+    """검색어로 검색해서 결과를 돌려줘요.
 
-    돌려주는 모양: [{"title": 제목, "url": 링크, "snippet": 짧은 요약}, ...]
+    기본은 DuckDuckGo예요. DuckDuckGo가 안 될 때(인터넷 서버에서 막히는 경우 등)
+    SSAYUZ_SEARCH_FALLBACK=ollama 로 켜 두면 Ollama 웹 검색으로 대신 찾아요.
+    돌려주는 모양: [{"title": 제목, "url": 링크, "snippet": 짧은 요약, "engine": 검색엔진}, ...]
     결과가 하나도 없으면 빈 목록 [] 을 돌려줘요.
     """
+    global _duckduckgo_down_until
+    fallback_on = FALLBACK == "ollama" and bool(os.environ.get("OLLAMA_API_KEY"))
+    # 방금 DuckDuckGo가 안 됐으면, 잠시 동안은 기다리지 않고 바로 예비 검색으로 가요
+    if fallback_on and time.monotonic() < _duckduckgo_down_until:
+        return _ollama_search(query, max_results)
+    try:
+        return _duckduckgo(query, max_results)
+    except SearchError:
+        if not fallback_on:
+            raise
+        _duckduckgo_down_until = time.monotonic() + DUCKDUCKGO_RETRY_AFTER
+        return _ollama_search(query, max_results)
+
+
+def _ollama_search(query: str, max_results: int) -> list[dict]:
+    """Ollama 웹 검색(공식 API)으로 찾아요. OLLAMA_API_KEY 가 필요해요.
+
+    결과에 페이지 본문(content)도 들어 있어서, 페이지를 다시 받지 않아도 돼요.
+    세이프서치 설정은 없어서 성인 사이트 걸러내기(is_blocked)를 꼭 거쳐요.
+    """
+    import ollama  # 예비 검색을 쓸 때만 불러와요
+
+    try:
+        response = ollama.Client(host="https://ollama.com", timeout=TIMEOUT * 2).web_search(
+            query, max_results=min(max_results, 10)
+        )
+    except Exception as e:
+        raise SearchError(f"예비 검색(Ollama)도 실패했어요: {e}") from e
+
+    found = []
+    for r in response.results:
+        if not r.url or is_blocked(r.url):
+            continue
+        content = r.content or ""
+        found.append({"title": r.title or r.url, "url": r.url, "snippet": content[:300],
+                      "content": content, "engine": "ollama"})
+    return found
+
+
+def _duckduckgo(query: str, max_results: int) -> list[dict]:
+    """DuckDuckGo에 물어봐요 (세이프서치 엄격, 한국 지역)."""
     engine = SafeDuckDuckGo(timeout=TIMEOUT)
     try:
         results = engine.search(query, region=REGION)
@@ -72,7 +122,7 @@ def search(query: str, max_results: int = 5) -> list[dict]:
         if not r.href or r.href in seen or is_blocked(r.href):
             continue
         seen.add(r.href)
-        found.append({"title": r.title, "url": r.href, "snippet": r.body})
+        found.append({"title": r.title, "url": r.href, "snippet": r.body, "engine": "duckduckgo"})
         if len(found) >= max_results:
             break
     return found
