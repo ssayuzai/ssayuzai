@@ -40,14 +40,14 @@ $env:OLLAMA_API_KEY = "여기에_키"
 
 1. https://github.com 에서 가입해요. (무료, 카드 필요 없음)
 2. 오른쪽 위 **+** → **New repository**를 눌러요.
-   - Repository name: `ssayuz-ai`
+   - Repository name: `ssayuzai`
    - **Private**(비공개)를 선택해요.
    - 아래의 "Add a README file" 같은 체크는 **모두 비워 둬요.**
    - **Create repository**를 눌러요.
-3. 이 폴더에서 PowerShell을 열고 차례대로 실행해요. `내아이디`는 GitHub 아이디로 바꿔요.
+3. 이 폴더에서 PowerShell을 열고 차례대로 실행해요. (이미 연결해 뒀다면 두 번째 줄만 실행해요)
 
 ```powershell
-git remote add origin https://github.com/내아이디/ssayuz-ai.git
+git remote add origin https://github.com/ssayuzai/ssayuzai.git
 ```
 
 ```powershell
@@ -62,7 +62,7 @@ git push -u origin main
 
 1. https://render.com 에서 **Get Started** → **GitHub로 가입**해요. (무료 플랜, 카드 필요 없음)
 2. 오른쪽 위 **New +** → **Blueprint**를 눌러요.
-3. GitHub 연결을 허락하고 `ssayuz-ai` 저장소를 골라요. Render가 `render.yaml`을 읽어요.
+3. GitHub 연결을 허락하고 `ssayuzai` 저장소를 골라요. Render가 `render.yaml`을 읽어요.
 4. 값을 넣으라는 칸이 두 개 나와요.
 
 | 칸 | 넣을 값 |
@@ -79,7 +79,7 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
 
 | 설정 | 값 |
 |---|---|
-| Repository | `ssayuz-ai` |
+| Repository | `ssayuzai` |
 | Language | Python 3 |
 | Region | Singapore |
 | Build Command | `pip install -r requirements.txt` |
