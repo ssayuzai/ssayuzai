@@ -1,13 +1,17 @@
 r"""
-검색 프로그램이에요. DuckDuckGo에서 검색해서 제목 / 링크 / 요약을 보여줘요.
-(DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾는 예비 검색도 있어요. 기본은 꺼져 있어요)
+검색 프로그램이에요. 검색해서 제목 / 링크 / 요약을 보여줘요.
+
+검색엔진 두 개를 차례로 써요:
+  - Ollama 웹 검색 (공식 API, OLLAMA_API_KEY 가 있을 때) ← 먼저
+  - DuckDuckGo (세이프서치 엄격)                          ← Ollama 가 안 되거나 키가 없을 때
+인터넷 서버(Render)에서는 DuckDuckGo 가 막혀서 Ollama 를 먼저 써요.
+DuckDuckGo 를 먼저 쓰려면 SSAYUZ_SEARCH_FIRST=duckduckgo 로 정해요.
 
 실행: .venv\Scripts\python.exe search.py 목성의 위성
 """
 
 import os
 import sys
-import time
 from urllib.parse import urlparse
 
 from ddgs.engines.duckduckgo import Duckduckgo
@@ -18,12 +22,8 @@ REGION = "kr-kr"
 SAFE_SEARCH = "1"
 # 검색이 이 시간(초)보다 오래 걸리면 포기해요
 TIMEOUT = 10
-# 예비 검색: DuckDuckGo가 안 될 때 Ollama 웹 검색을 써요 (OLLAMA_API_KEY 가 있을 때만).
-# 기본으로 켜져 있고, 끄려면 SSAYUZ_SEARCH_FALLBACK=off 로 정해요
-FALLBACK = os.environ.get("SSAYUZ_SEARCH_FALLBACK", "ollama")
-# DuckDuckGo가 한 번 안 되면, 이 시간(초) 동안은 바로 예비 검색을 써요 (매번 10초씩 기다리지 않게)
-DUCKDUCKGO_RETRY_AFTER = 600
-_duckduckgo_down_until = 0.0
+# 먼저 쓸 검색엔진: "ollama"(기본) 또는 "duckduckgo". API 키가 없으면 DuckDuckGo 만 써요
+SEARCH_FIRST = os.environ.get("SSAYUZ_SEARCH_FIRST", "ollama")
 # 세이프서치 두 번째 안전망: 사이트 주소에 이 말이 들어 있으면 결과에서 빼요
 # ("sex"는 Sussex, Essex 같은 정상 주소까지 막아서 넣지 않았어요)
 BLOCKED_HOST_WORDS = (
@@ -61,28 +61,30 @@ def is_blocked(url: str) -> bool:
 def search(query: str, max_results: int = 5) -> list[dict]:
     """검색어로 검색해서 결과를 돌려줘요.
 
-    기본은 DuckDuckGo예요. DuckDuckGo가 안 될 때(인터넷 서버에서 막히는 경우 등)
-    SSAYUZ_SEARCH_FALLBACK=ollama 로 켜 두면 Ollama 웹 검색으로 대신 찾아요.
+    API 키가 있으면 Ollama 웹 검색을 먼저 쓰고, 안 되면 DuckDuckGo 로 찾아요 (순서는 SEARCH_FIRST).
+    키가 없으면 DuckDuckGo 만 써요.
     돌려주는 모양: [{"title": 제목, "url": 링크, "snippet": 짧은 요약, "engine": 검색엔진}, ...]
     결과가 하나도 없으면 빈 목록 [] 을 돌려줘요.
     """
-    global _duckduckgo_down_until
     from brain import api_key  # API 키 읽는 법은 brain.py 한 곳에서만 정해요
 
-    fallback_on = FALLBACK == "ollama" and bool(api_key())
-    # 방금 DuckDuckGo가 안 됐으면, 잠시 동안은 기다리지 않고 바로 예비 검색으로 가요
-    if fallback_on and time.monotonic() < _duckduckgo_down_until:
-        return _ollama_search(query, max_results)
+    if not api_key():
+        try:
+            return _duckduckgo(query, max_results)
+        except SearchError as e:
+            # 해결 방법을 함께 알려 줘요
+            raise SearchError(f"{e} (OLLAMA_API_KEY 를 설정하면 Ollama 웹 검색으로 찾을 수 있어요)") from e
+
+    engines = [_ollama_search, _duckduckgo]
+    if SEARCH_FIRST == "duckduckgo":
+        engines.reverse()
     try:
-        return _duckduckgo(query, max_results)
-    except SearchError as e:
-        if not fallback_on:
-            if FALLBACK == "ollama":
-                # 예비 검색은 켜져 있는데 API 키가 없어서 못 쓰는 경우예요. 해결 방법을 알려 줘요
-                raise SearchError(f"{e} (OLLAMA_API_KEY 를 설정하면 Ollama 웹 검색으로 대신 찾을 수 있어요)") from e
-            raise
-        _duckduckgo_down_until = time.monotonic() + DUCKDUCKGO_RETRY_AFTER
-        return _ollama_search(query, max_results)
+        return engines[0](query, max_results)
+    except SearchError as first_error:
+        try:
+            return engines[1](query, max_results)  # 첫 번째가 안 되면 두 번째로 찾아요
+        except SearchError as second_error:
+            raise SearchError(f"{first_error} / {second_error}") from second_error
 
 
 def _ollama_search(query: str, max_results: int) -> list[dict]:
@@ -91,7 +93,7 @@ def _ollama_search(query: str, max_results: int) -> list[dict]:
     결과에 페이지 본문(content)도 들어 있어서, 페이지를 다시 받지 않아도 돼요.
     세이프서치 설정은 없어서 성인 사이트 걸러내기(is_blocked)를 꼭 거쳐요.
     """
-    import ollama  # 예비 검색을 쓸 때만 불러와요
+    import ollama  # Ollama 웹 검색을 쓸 때만 불러와요
 
     from brain import api_key
 
@@ -101,11 +103,11 @@ def _ollama_search(query: str, max_results: int) -> list[dict]:
         response = client.web_search(query, max_results=min(max_results, 10))
     except ollama.ResponseError as e:
         if e.status_code in (401, 403):
-            raise SearchError("예비 검색(Ollama)도 실패했어요: API 키가 맞지 않아요. "
+            raise SearchError("Ollama 웹 검색이 실패했어요: API 키가 맞지 않아요. "
                               "OLLAMA_API_KEY 에 키만 정확히 들어 있는지 확인해 주세요.") from e
-        raise SearchError(f"예비 검색(Ollama)도 실패했어요: {e}") from e
+        raise SearchError(f"Ollama 웹 검색이 실패했어요: {e}") from e
     except Exception as e:
-        raise SearchError(f"예비 검색(Ollama)도 실패했어요: {e}") from e
+        raise SearchError(f"Ollama 웹 검색이 실패했어요: {e}") from e
 
     found = []
     for r in response.results:

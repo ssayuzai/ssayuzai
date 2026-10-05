@@ -140,31 +140,47 @@ class AppTest(unittest.TestCase):
         response.close()
         self.assertEqual(self.client.get("/fonts/../app.py").status_code, 404)  # 다른 파일은 못 꺼내 가요
 
-    def test_search_fallback_to_ollama(self):
+    def test_search_engine_order(self):
         import search
 
-        def ddg_blocked(query, max_results):
-            raise search.SearchError("막힘")
+        calls = []
 
-        def fake_ollama(query, max_results):
-            return [{"title": "t", "url": "https://example.com", "snippet": "s", "content": "c", "engine": "ollama"}]
+        def make_engine(name, works):
+            def engine(query, max_results):
+                calls.append(name)
+                if not works[0]:
+                    raise search.SearchError(f"{name} 막힘")
+                return [{"title": "t", "url": "https://example.com", "snippet": "s", "engine": name}]
+            return engine
 
-        original = (search._duckduckgo, search._ollama_search, search.FALLBACK, search._duckduckgo_down_until)
-        search._duckduckgo, search._ollama_search = ddg_blocked, fake_ollama
+        ddg_works, ollama_works = [True], [True]
+        original = (search._duckduckgo, search._ollama_search, search.SEARCH_FIRST)
+        search._duckduckgo = make_engine("duckduckgo", ddg_works)
+        search._ollama_search = make_engine("ollama", ollama_works)
         try:
-            search.FALLBACK, search._duckduckgo_down_until = "off", 0.0
-            with self.assertRaises(search.SearchError):  # 예비 검색이 꺼져 있으면 오류 그대로
-                search.search("세종대왕")
-            search.FALLBACK = "ollama"
-            with self.assertRaises(search.SearchError) as caught:  # 켜져 있어도 API 키가 없으면 해결 방법을 알려 줘요
+            # API 키가 없으면 DuckDuckGo 만 써요. 막히면 해결 방법을 알려 줘요
+            self.assertEqual(search.search("세종대왕")[0]["engine"], "duckduckgo")
+            ddg_works[0] = False
+            with self.assertRaises(search.SearchError) as caught:
                 search.search("세종대왕")
             self.assertIn("OLLAMA_API_KEY", str(caught.exception))
+
             os.environ["OLLAMA_API_KEY"] = "test-key"
-            self.assertEqual(search.search("세종대왕")[0]["engine"], "ollama")  # 켜져 있으면 대신 찾아요
-            self.assertGreater(search._duckduckgo_down_until, 0)  # 잠시 DuckDuckGo를 건너뛰어요
+            # 키가 있으면 Ollama 를 먼저 써요 (DuckDuckGo 는 부르지도 않아요)
+            calls.clear()
+            self.assertEqual(search.search("세종대왕")[0]["engine"], "ollama")
+            self.assertEqual(calls, ["ollama"])
+            # Ollama 가 안 되면 DuckDuckGo 로 찾아요
+            ollama_works[0], ddg_works[0] = False, True
+            self.assertEqual(search.search("세종대왕")[0]["engine"], "duckduckgo")
+            # 순서를 바꿀 수도 있어요
+            search.SEARCH_FIRST, ollama_works[0] = "duckduckgo", True
+            calls.clear()
+            self.assertEqual(search.search("세종대왕")[0]["engine"], "duckduckgo")
+            self.assertEqual(calls, ["duckduckgo"])
         finally:
             os.environ.pop("OLLAMA_API_KEY", None)
-            search._duckduckgo, search._ollama_search, search.FALLBACK, search._duckduckgo_down_until = original
+            search._duckduckgo, search._ollama_search, search.SEARCH_FIRST = original
 
     # ---------- 질문하기와 기록 저장 ----------
 

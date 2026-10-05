@@ -4,7 +4,7 @@
 
 ```
 화면 + 파이썬(검색, 읽기, 로그인) → Render 무료 서버
-AI 정리 (+ 예비 웹 검색)           → Ollama 클라우드 무료 플랜
+AI 정리 + 웹 검색                  → Ollama 클라우드 무료 플랜
 회원, 대화 기록                    → Neon 무료 DB (Postgres)
 코드 보관                          → GitHub (비공개 저장소)
 ```
@@ -97,7 +97,6 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
 | `SSAYUZ_HTTPS` | `1` |
 | `SSAYUZ_MODEL` | `gemma4:31b` (1단계에서 다른 모델을 메모했으면 그 이름) |
 | `SSAYUZ_READ_DEADLINE` | `12` |
-| `SSAYUZ_SEARCH_FALLBACK` | `ollama` |
 | `SECRET_KEY` | **Generate** 단추로 무작위 값 만들기 |
 | `OLLAMA_API_KEY` | API 키 |
 | `DATABASE_URL` | 6단계에서 넣어요 |
@@ -106,19 +105,19 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
 
 1. 주소로 들어가서 **회원가입** 탭에서 아이디와 비밀번호를 넣어요.
 2. "세종대왕은 언제 태어났어?"처럼 물어봐요.
-3. 진행 단계에 `결과 8개 (Ollama 웹 검색)`처럼 나오면, DuckDuckGo가 서버에서 막혀서 예비 검색으로 찾은 거예요. 정상이에요.
+3. 진행 단계에 `결과 8개 (Ollama 웹 검색)`처럼 나오면 정상이에요. (2026년 10월 5일 시험: 전체 약 13초, 정답)
 
-## 5. 서버 검색 (DuckDuckGo + 예비 검색)
+## 5. 서버 검색 (Ollama 웹 검색 먼저)
 
-Render 같은 데이터센터 서버에서는 DuckDuckGo 연결이 막힐 수 있어요(실제로 시간 초과가 났어요).
-그래서 `SSAYUZ_SEARCH_FALLBACK=ollama`로 **예비 검색**을 켜 뒀어요.
+Render 같은 데이터센터 서버에서는 DuckDuckGo 연결이 막혀요(실제로 매번 시간 초과가 났어요).
+그래서 API 키가 있으면 **Ollama 웹 검색**(공식 API, 같은 API 키 사용)을 **먼저** 쓰고, 그게 안 될 때만 DuckDuckGo로 찾아요.
 
-- DuckDuckGo를 먼저 시도하고, 안 되면 **Ollama 웹 검색**(공식 API, 같은 API 키 사용)으로 찾아요.
-- 한 번 DuckDuckGo가 안 되면 10분 동안은 기다리지 않고 바로 예비 검색을 써요.
+- DuckDuckGo가 시간 초과될 때까지 기다리던 약 10초를 아껴요.
 - Ollama 웹 검색은 페이지 본문도 함께 줘서, 작은 무료 서버가 페이지를 다시 받지 않아도 돼요.
+- DuckDuckGo를 먼저 쓰고 싶으면 Environment에 `SSAYUZ_SEARCH_FIRST` = `duckduckgo`를 넣어요.
 
 > Ollama 웹 검색에는 DuckDuckGo 같은 세이프서치 설정이 없어요. 대신 성인 사이트 주소 거르기는 그대로 해요.
-> Render 의 **Environment**에 `SSAYUZ_SEARCH_FALLBACK` 이 `ollama` 로 들어가 있는지 한 번 확인해 주세요. 없으면 직접 추가해요.
+> 예전에 넣은 `SSAYUZ_SEARCH_FALLBACK` 설정은 이제 쓰지 않아요. Environment에 남아 있으면 지워도 돼요.
 
 ## 6. Neon DB 연결하기 (회원, 기록 저장)
 
@@ -154,6 +153,6 @@ Render 서비스 화면 → **Environment** → 값을 바꾸고 **Save Changes*
 | Ollama 클라우드 API 키가 맞지 않거나… | Render의 `OLLAMA_API_KEY` 값을 확인해요 |
 | Ollama 클라우드에 '…' 모델이 없어요 | 1단계 점검으로 되는 모델을 찾아서 `SSAYUZ_MODEL`을 바꿔요 |
 | 무료 사용량을 다 썼거나… | 다음 달까지 기다리거나 잠시 뒤에 다시 해요 |
-| DuckDuckGo가 잠시 검색을 막았어요 / 검색 중 문제가 생겼어요 | `SSAYUZ_SEARCH_FALLBACK`이 `ollama`인지 확인해요 (5단계) |
-| 예비 검색(Ollama)도 실패했어요 | Ollama 무료 사용량과 `OLLAMA_API_KEY`를 확인해요 |
+| DuckDuckGo가 잠시 검색을 막았어요 / 검색 중 문제가 생겼어요 | Render에 `OLLAMA_API_KEY`가 있는지 확인해요 (5단계) |
+| Ollama 웹 검색이 실패했어요 | Ollama 무료 사용량과 `OLLAMA_API_KEY`를 확인해요 (노트북에서 `check_setup.py`로 키를 시험할 수 있어요) |
 | 화면이 안 뜨고 Render Logs에 `pg8000`, `DATABASE_URL` 오류 | Neon 주소를 빠짐없이 복사했는지 확인해요 (`postgresql://`로 시작) |
