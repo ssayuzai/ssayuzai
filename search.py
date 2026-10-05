@@ -18,8 +18,9 @@ REGION = "kr-kr"
 SAFE_SEARCH = "1"
 # 검색이 이 시간(초)보다 오래 걸리면 포기해요
 TIMEOUT = 10
-# 예비 검색: "ollama" 로 정하면 DuckDuckGo가 안 될 때 Ollama 웹 검색을 써요 (OLLAMA_API_KEY 필요)
-FALLBACK = os.environ.get("SSAYUZ_SEARCH_FALLBACK", "")
+# 예비 검색: DuckDuckGo가 안 될 때 Ollama 웹 검색을 써요 (OLLAMA_API_KEY 가 있을 때만).
+# 기본으로 켜져 있고, 끄려면 SSAYUZ_SEARCH_FALLBACK=off 로 정해요
+FALLBACK = os.environ.get("SSAYUZ_SEARCH_FALLBACK", "ollama")
 # DuckDuckGo가 한 번 안 되면, 이 시간(초) 동안은 바로 예비 검색을 써요 (매번 10초씩 기다리지 않게)
 DUCKDUCKGO_RETRY_AFTER = 600
 _duckduckgo_down_until = 0.0
@@ -72,8 +73,11 @@ def search(query: str, max_results: int = 5) -> list[dict]:
         return _ollama_search(query, max_results)
     try:
         return _duckduckgo(query, max_results)
-    except SearchError:
+    except SearchError as e:
         if not fallback_on:
+            if FALLBACK == "ollama":
+                # 예비 검색은 켜져 있는데 API 키가 없어서 못 쓰는 경우예요. 해결 방법을 알려 줘요
+                raise SearchError(f"{e} (OLLAMA_API_KEY 를 설정하면 Ollama 웹 검색으로 대신 찾을 수 있어요)") from e
             raise
         _duckduckgo_down_until = time.monotonic() + DUCKDUCKGO_RETRY_AFTER
         return _ollama_search(query, max_results)

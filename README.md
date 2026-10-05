@@ -131,7 +131,7 @@ ollama pull qwen3.5:2b
 | `SSAYUZ_CONTEXT_CHARS` | AI에게 보여 줄 자료 글자 수 | 노트북 1500, 클라우드 3000 |
 | `SSAYUZ_READ_DEADLINE` | 페이지 읽기 최대 시간(초) | 7 |
 | `SSAYUZ_HTTPS` | `1`이면 HTTPS용 로그인 쿠키 | 없음 |
-| `SSAYUZ_SEARCH_FALLBACK` | `ollama`면 DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾아요 (`OLLAMA_API_KEY` 필요, 세이프서치 설정은 없고 성인 사이트 거르기만 해요) | 없음 (끔) |
+| `SSAYUZ_SEARCH_FALLBACK` | DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾아요 (`OLLAMA_API_KEY`가 있을 때만, 세이프서치 설정은 없고 성인 사이트 거르기만 해요). `off`면 꺼요 | `ollama` (켜짐) |
 | `SECRET_KEY` | 로그인 비밀 열쇠 | `data/secret_key` 파일 |
 | `DATABASE_URL` | Postgres(Neon) 주소. 있으면 SQLite 대신 이 DB에 저장해요 | 없음 (`data/ssayuz.db`) |
 

@@ -135,10 +135,13 @@ class AppTest(unittest.TestCase):
         original = (search._duckduckgo, search._ollama_search, search.FALLBACK, search._duckduckgo_down_until)
         search._duckduckgo, search._ollama_search = ddg_blocked, fake_ollama
         try:
-            search.FALLBACK, search._duckduckgo_down_until = "", 0.0
+            search.FALLBACK, search._duckduckgo_down_until = "off", 0.0
             with self.assertRaises(search.SearchError):  # 예비 검색이 꺼져 있으면 오류 그대로
                 search.search("세종대왕")
             search.FALLBACK = "ollama"
+            with self.assertRaises(search.SearchError) as caught:  # 켜져 있어도 API 키가 없으면 해결 방법을 알려 줘요
+                search.search("세종대왕")
+            self.assertIn("OLLAMA_API_KEY", str(caught.exception))
             os.environ["OLLAMA_API_KEY"] = "test-key"
             self.assertEqual(search.search("세종대왕")[0]["engine"], "ollama")  # 켜져 있으면 대신 찾아요
             self.assertGreater(search._duckduckgo_down_until, 0)  # 잠시 DuckDuckGo를 건너뛰어요
