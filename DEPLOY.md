@@ -4,13 +4,13 @@
 
 ```
 화면 + 파이썬(검색, 읽기, 로그인) → Render 무료 서버
-AI 정리                           → Ollama 클라우드 무료 플랜
+AI 정리 (+ 예비 웹 검색)           → Ollama 클라우드 무료 플랜
+회원, 대화 기록                    → Neon 무료 DB (Postgres)
 코드 보관                          → GitHub (비공개 저장소)
 ```
 
-> **지금은 1단계(시험판)예요.** 서버에서 DuckDuckGo 검색이 되는지부터 확인해요.
-> 시험판은 회원과 대화 기록을 서버 안에 저장해서, **서버가 잠들거나 다시 켜지면 지워져요.**
-> 검색이 잘 되면 2단계에서 Neon(무료 DB)을 연결해서 지워지지 않게 할게요.
+> 6단계(Neon 연결)까지 해야 **회원과 대화 기록이 지워지지 않아요.**
+> Neon을 연결하기 전에는 서버 안에 임시로 저장해서, 서버가 잠들거나 다시 켜지면 지워져요.
 
 ---
 
@@ -95,40 +95,55 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
 | `SSAYUZ_HTTPS` | `1` |
 | `SSAYUZ_MODEL` | `gemma4:31b` (1단계에서 다른 모델을 메모했으면 그 이름) |
 | `SSAYUZ_READ_DEADLINE` | `12` |
+| `SSAYUZ_SEARCH_FALLBACK` | `ollama` |
 | `SECRET_KEY` | **Generate** 단추로 무작위 값 만들기 |
 | `OLLAMA_API_KEY` | API 키 |
 | `SSAYUZ_INVITE_CODE` | 내가 정한 초대 코드 |
+| `DATABASE_URL` | 6단계에서 넣어요 |
 
 ## 4. 시험하기
 
 1. 주소로 들어가서 **회원가입** 탭에서 아이디, 비밀번호, **초대 코드**를 넣어요.
 2. "세종대왕은 언제 태어났어?"처럼 물어봐요.
-3. 결과를 알려 주세요. 특히 이 두 가지가 중요해요.
-   - **검색이 되는지:** "DuckDuckGo가 잠시 검색을 막았어요"가 계속 나오면 서버에서 검색이 막힌 거예요.
-   - **걸린 시간:** 원문 문장과 AI 정리가 각각 몇 초 만에 나오는지
+3. 진행 단계에 `결과 8개 (Ollama 웹 검색)`처럼 나오면, DuckDuckGo가 서버에서 막혀서 예비 검색으로 찾은 거예요. 정상이에요.
 
-## 서버에서 DuckDuckGo 검색이 안 될 때
+## 5. 서버 검색 (DuckDuckGo + 예비 검색)
 
-Render 같은 데이터센터 서버에서는 DuckDuckGo 연결이 막힐 수 있어요.
+Render 같은 데이터센터 서버에서는 DuckDuckGo 연결이 막힐 수 있어요(실제로 시간 초과가 났어요).
+그래서 `SSAYUZ_SEARCH_FALLBACK=ollama`로 **예비 검색**을 켜 뒀어요.
 
-1. 로그인한 상태에서 `https://내주소.onrender.com/api/diagnose/search` 를 열면, 서버에서 DuckDuckGo 연결을 단계별로 시험한 결과가 나와요.
-2. 검색이 계속 안 되면 Render의 **Environment**에 아래 값을 추가하면, DuckDuckGo 대신 **Ollama 웹 검색**(공식 API, 같은 API 키 사용)으로 찾아요.
-
-| Key | Value |
-|---|---|
-| `SSAYUZ_SEARCH_FALLBACK` | `ollama` |
+- DuckDuckGo를 먼저 시도하고, 안 되면 **Ollama 웹 검색**(공식 API, 같은 API 키 사용)으로 찾아요.
+- 한 번 DuckDuckGo가 안 되면 10분 동안은 기다리지 않고 바로 예비 검색을 써요.
+- Ollama 웹 검색은 페이지 본문도 함께 줘서, 작은 무료 서버가 페이지를 다시 받지 않아도 돼요.
 
 > Ollama 웹 검색에는 DuckDuckGo 같은 세이프서치 설정이 없어요. 대신 성인 사이트 주소 거르기는 그대로 해요.
+> Render 의 **Environment**에 `SSAYUZ_SEARCH_FALLBACK` 이 `ollama` 로 들어가 있는지 한 번 확인해 주세요. 없으면 직접 추가해요.
 
-## 5. 모델 바꾸기, 설정 바꾸기
+## 6. Neon DB 연결하기 (회원, 기록 저장)
+
+1. https://neon.com 에서 **Sign up** → **GitHub로 가입**해요. (무료 플랜. 카드를 물어보면 멈추고 알려 주세요)
+2. 새 프로젝트를 만들어요.
+   - Project name: `ssayuz`
+   - Postgres version: 기본값 그대로
+   - **Region: AWS Asia Pacific (Singapore)** ← Render 서버와 같은 지역이라 빨라요
+3. 프로젝트 화면의 **Connect** 단추를 누르고, **Connection string**(`postgresql://`로 시작하는 긴 주소)을 복사해요.
+   - 이 주소 안에 **DB 비밀번호가 들어 있어요.** API 키처럼 남에게 보여 주거나 GitHub에 올리지 마세요.
+4. Render 서비스 화면 → **Environment** → **Add Environment Variable**
+   - Key: `DATABASE_URL`
+   - Value: 복사한 주소
+   - **Save Changes**를 누르면 서버가 다시 켜져요(약 3분).
+5. 다시 켜지면 **마지막으로 한 번 더 회원가입**해요. 이제부터는 서버가 잠들거나 다시 켜져도 계정과 기록이 남아요.
+
+> 표(테이블)는 서버가 켜질 때 자동으로 만들어져요. Neon에서 따로 할 일은 없어요.
+
+## 7. 모델 바꾸기, 설정 바꾸기
 
 Render 서비스 화면 → **Environment** → 값을 바꾸고 **Save Changes**를 누르면 서버가 다시 켜져요.
 
 ## 알아둘 점
 
-- **잠들기:** 15분 동안 아무도 접속하지 않으면 서버가 잠들어요. 다음 접속은 깨어나는 데 약 1분 걸려요.
-- **무료 사용량:** Render는 한 달에 750시간까지 무료예요(서버 1개면 충분해요). Ollama 클라우드 무료 사용량은 https://ollama.com/settings 에서 볼 수 있고, 다 쓰면 다음 달에 다시 채워져요.
-- **시험판의 기록:** 지금은 서버가 잠들거나 다시 켜지면 회원과 대화 기록이 지워져요. 2단계(Neon 연결)에서 해결해요.
+- **잠들기:** 15분 동안 아무도 접속하지 않으면 서버가 잠들어요. 다음 접속은 깨어나는 데 약 1분 걸려요. Neon DB도 5분 동안 안 쓰면 잠들었다가, 다음에 쓸 때 1초 안팎으로 깨어나요.
+- **무료 사용량:** Render는 한 달에 750시간까지 무료예요(서버 1개면 충분해요). Ollama 클라우드 무료 사용량은 https://ollama.com/settings 에서 볼 수 있고, 다 쓰면 다음 달에 다시 채워져요. Neon 무료 플랜은 프로젝트당 저장 공간 1GB예요.
 - **코드를 고친 뒤 다시 올리기:** `git add -A`, `git commit -m "설명"`, `git push`를 하면 Render가 알아서 새 코드로 다시 켜요.
 
 ## 문제가 생기면
@@ -138,5 +153,7 @@ Render 서비스 화면 → **Environment** → 값을 바꾸고 **Save Changes*
 | Ollama 클라우드 API 키가 맞지 않거나… | Render의 `OLLAMA_API_KEY` 값을 확인해요 |
 | Ollama 클라우드에 '…' 모델이 없어요 | 1단계 점검으로 되는 모델을 찾아서 `SSAYUZ_MODEL`을 바꿔요 |
 | 무료 사용량을 다 썼거나… | 다음 달까지 기다리거나 잠시 뒤에 다시 해요 |
-| DuckDuckGo가 잠시 검색을 막았어요 | 1~2분 뒤에 다시 해 보고, 계속되면 알려 주세요 |
+| DuckDuckGo가 잠시 검색을 막았어요 / 검색 중 문제가 생겼어요 | `SSAYUZ_SEARCH_FALLBACK`이 `ollama`인지 확인해요 (5단계) |
+| 예비 검색(Ollama)도 실패했어요 | Ollama 무료 사용량과 `OLLAMA_API_KEY`를 확인해요 |
 | 초대 코드가 맞지 않아요 | Render의 `SSAYUZ_INVITE_CODE` 값과 같은지 확인해요 |
+| 화면이 안 뜨고 Render Logs에 `pg8000`, `DATABASE_URL` 오류 | Neon 주소를 빠짐없이 복사했는지 확인해요 (`postgresql://`로 시작) |

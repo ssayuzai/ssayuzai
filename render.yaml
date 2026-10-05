@@ -22,8 +22,12 @@ services:
         value: gemma4:31b
       - key: SSAYUZ_READ_DEADLINE # 무료 서버는 CPU가 작아서 페이지 읽기 시간을 넉넉히 줘요
         value: "12"
+      - key: SSAYUZ_SEARCH_FALLBACK  # DuckDuckGo 가 서버에서 막히면 Ollama 웹 검색으로 대신 찾아요
+        value: ollama
       - key: SECRET_KEY           # 로그인 비밀 열쇠: Render 가 무작위로 만들어 줘요
         generateValue: true
+      - key: DATABASE_URL         # Neon 무료 DB 주소: 회원과 기록이 서버를 다시 켜도 남아요 (DEPLOY.md 6단계)
+        sync: false
       - key: OLLAMA_API_KEY       # Ollama 클라우드 API 키: 처음 만들 때 직접 입력
         sync: false
       - key: SSAYUZ_INVITE_CODE   # 회원가입 초대 코드: 처음 만들 때 직접 입력 (아는 사람만 가입)

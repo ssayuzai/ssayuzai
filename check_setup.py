@@ -29,7 +29,7 @@ def check_python():
 def check_packages():
     """requirements.txt에 적은 패키지가 다 깔렸는지 봐요."""
     all_ok = True
-    for name in ["ddgs", "trafilatura", "requests", "ollama", "protego", "flask"]:
+    for name in ["ddgs", "trafilatura", "requests", "ollama", "protego", "flask", "pg8000"]:
         try:
             print(f"[완료] 패키지 {name} {metadata.version(name)}")
         except metadata.PackageNotFoundError:

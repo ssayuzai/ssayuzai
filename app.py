@@ -264,42 +264,6 @@ def delete_conversation(user_id: int, conversation_id: int):
 
 
 # ---------------------------------------------------------------------------
-# [임시] 검색 진단: 서버에서 DuckDuckGo에 왜 연결이 안 되는지 알아보는 기능
-# 원인을 찾으면 지울 거예요. 정해진 주소만 시험해요 (다른 주소를 넣을 수 없어요)
-# ---------------------------------------------------------------------------
-
-@app.get("/api/diagnose/search")
-@login_required
-def diagnose_search(user_id: int):
-    import socket
-
-    import requests
-
-    import reader
-    import search as search_module
-
-    host = "html.duckduckgo.com"
-    report = {}
-
-    def timed(label, func):
-        started = time.monotonic()
-        try:
-            result = func()
-            report[label] = f"성공 ({time.monotonic() - started:.1f}초) {result}"
-        except Exception as e:
-            report[label] = f"실패 ({time.monotonic() - started:.1f}초) {type(e).__name__}: {str(e)[:200]}"
-
-    timed("1_주소찾기_DNS", lambda: sorted({i[4][0] for i in socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)}))
-    timed("2_연결_TCP", lambda: socket.create_connection((host, 443), timeout=8).close() or "연결됨")
-    # 실제 검색을 먼저 해요. 일반 요청을 먼저 하면 로봇으로 보여서 뒤의 검색까지 막혀요
-    timed("3_검색_ddgs", lambda: f"결과 {len(search_module._duckduckgo('세종대왕', 3))}개")
-    timed("4_비교_위키백과", lambda: f"HTTP {requests.get('https://ko.wikipedia.org/wiki/세종', headers=reader.HEADERS, timeout=10).status_code}")
-    timed("5_일반요청_requests", lambda: (lambda r: f"HTTP {r.status_code}, 막힘화면={'anomaly' in r.text.lower()}")(
-        requests.post(f"https://{host}/html/", data={"q": "test"}, timeout=10, headers=reader.HEADERS)))
-    return jsonify(report)
-
-
-# ---------------------------------------------------------------------------
 # 질문하기
 # ---------------------------------------------------------------------------
 

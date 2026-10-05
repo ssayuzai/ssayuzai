@@ -134,10 +134,12 @@ ollama pull qwen3.5:2b
 | `SSAYUZ_INVITE_CODE` | 이 코드를 아는 사람만 회원가입 | 없음 (누구나 가입) |
 | `SSAYUZ_SEARCH_FALLBACK` | `ollama`면 DuckDuckGo가 안 될 때 Ollama 웹 검색으로 대신 찾아요 (`OLLAMA_API_KEY` 필요, 세이프서치 설정은 없고 성인 사이트 거르기만 해요) | 없음 (끔) |
 | `SECRET_KEY` | 로그인 비밀 열쇠 | `data/secret_key` 파일 |
+| `DATABASE_URL` | Postgres(Neon) 주소. 있으면 SQLite 대신 이 DB에 저장해요 | 없음 (`data/ssayuz.db`) |
 
 ## 데이터 저장 (`db.py`)
 
-- Python에 기본으로 들어 있는 **SQLite**를 써요. 따로 설치할 게 없어요.
+- 인터넷 서버에서는 **Neon(Postgres)**에 저장해요. `DATABASE_URL`이 있으면 이쪽을 쓰고, 연결은 항상 암호화(SSL)해요. 연결 도구는 BSD 라이선스인 `pg8000`이에요.
+- 노트북에서는 Python에 기본으로 들어 있는 **SQLite**를 써요. 따로 설치할 게 없어요.
 - 모든 데이터는 `data` 폴더에 저장돼요.
   - `data/ssayuz.db` : 회원, 대화방, 질문과 답 기록
   - `data/secret_key` : 로그인 상태를 지키는 비밀 열쇠 (처음 실행할 때 무작위로 만들어요)
@@ -180,7 +182,9 @@ ollama pull qwen3.5:2b
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-회원가입, 초대 코드, 로그인, 로그인 잠금, 기록 저장, 이어지는 질문, 남의 대화 막기, 대화 지우기, 서버 상태 확인을 시험해요(12개). AI와 인터넷 없이 임시 DB로 몇 초 만에 끝나요. 진짜 `data` 폴더는 건드리지 않아요.
+회원가입, 초대 코드, 로그인, 로그인 잠금, 기록 저장, 이어지는 질문, 남의 대화 막기, 대화 지우기, 글꼴, 예비 검색, 서버 상태 확인을 시험해요(14개). AI와 인터넷 없이 임시 DB로 몇 초 만에 끝나요. 진짜 `data` 폴더는 건드리지 않아요.
+
+`SSAYUZ_TEST_DATABASE_URL`에 Postgres 주소를 넣으면 같은 시험을 **Postgres로 한 번 더** 해요(서버의 Neon과 같은 종류). 2026년 10월 5일에 SQLite와 Postgres 모두 통과했어요.
 
 ## 각 부분 따로 시험하기
 
@@ -243,3 +247,4 @@ ollama pull qwen3.5:2b
 - [x] 5단계: `main.py` 터미널 대화
 - [x] 6단계: 웹 화면 (`app.py`, `web/index.html`)
 - [x] 7단계: 개선 (동시 읽기, 빠른 답, 이전 대화 기억, 기록 저장, 회원가입, 자동 시험)
+- [x] 8단계: 인터넷 서버 (Render + Ollama 클라우드 + Neon, 초대 코드, 예비 검색, G마켓 산스 글꼴)

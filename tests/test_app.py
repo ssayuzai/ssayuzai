@@ -52,7 +52,8 @@ class AppTest(unittest.TestCase):
     def setUp(self):
         web.db.init()
         with web.db.connect() as conn:  # 시험마다 깨끗한 DB에서 시작해요
-            conn.executescript("DELETE FROM turns; DELETE FROM conversations; DELETE FROM users;")
+            for table in ("turns", "conversations", "users"):
+                web.db._run(conn, f"DELETE FROM {table}")
         web._login_fails.clear()
         web.run = fake_run
         self.client = web.app.test_client()
@@ -124,9 +125,6 @@ class AppTest(unittest.TestCase):
         self.assertIn("max-age=31536000", response.headers["Cache-Control"])
         response.close()
         self.assertEqual(self.client.get("/fonts/../app.py").status_code, 404)  # 다른 파일은 못 꺼내 가요
-
-    def test_diagnose_requires_login(self):
-        self.assertEqual(self.client.get("/api/diagnose/search").status_code, 401)
 
     def test_search_fallback_to_ollama(self):
         import search
@@ -207,6 +205,21 @@ class AppTest(unittest.TestCase):
         self.assertEqual(self.client.delete(f"/api/conversations/{conversation_id}").status_code, 200)
         self.assertEqual(self.client.get(f"/api/conversations/{conversation_id}").status_code, 404)
         self.assertEqual(web.db.get_turns(conversation_id), [])  # 기록도 함께 지워져요
+
+
+@unittest.skipUnless(os.environ.get("SSAYUZ_TEST_DATABASE_URL"),
+                     "Postgres 시험은 SSAYUZ_TEST_DATABASE_URL 이 있을 때만 해요")
+class AppTestPostgres(AppTest):
+    """위의 시험을 모두 Postgres(서버에서 쓰는 Neon 과 같은 종류의 DB)로 한 번 더 해요."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._saved_url = web.db.DATABASE_URL
+        web.db.DATABASE_URL = os.environ["SSAYUZ_TEST_DATABASE_URL"]
+
+    @classmethod
+    def tearDownClass(cls):
+        web.db.DATABASE_URL = cls._saved_url
 
 
 if __name__ == "__main__":
