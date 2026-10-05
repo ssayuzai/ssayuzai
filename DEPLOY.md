@@ -63,12 +63,14 @@ git push -u origin main
 1. https://render.com 에서 **Get Started** → **GitHub로 가입**해요. (무료 플랜, 카드 필요 없음)
 2. 오른쪽 위 **New +** → **Blueprint**를 눌러요.
 3. GitHub 연결을 허락하고 `ssayuzai` 저장소를 골라요. Render가 `render.yaml`을 읽어요.
-4. 값을 넣으라는 칸이 두 개 나와요.
+4. 값을 넣으라는 칸이 나와요.
 
 | 칸 | 넣을 값 |
 |---|---|
 | `OLLAMA_API_KEY` | 1단계에서 복사한 API 키 |
-| `SSAYUZ_INVITE_CODE` | **내가 정하는 초대 코드** (예: 길고 맞히기 어려운 말). 이걸 아는 사람만 가입할 수 있어요 |
+| `DATABASE_URL` | 6단계(Neon)를 한 뒤에 넣어요. 처음에는 비워 둬도 돼요 |
+
+> **회원가입은 누구나 할 수 있어요.** 아는 사람만 가입하게 하려면 Environment에 `SSAYUZ_INVITE_CODE`(내가 정한 초대 코드)를 추가하면 돼요.
 
 5. **Apply**(또는 Deploy)를 누르고 5~10분 기다려요.
 6. 서비스 화면 위쪽의 `https://ssayuz-ai-○○○○.onrender.com` 주소를 눌러요.
@@ -98,12 +100,12 @@ Blueprint 방식이 결제 정보를 요구하면 멈추고, 대신 **New +** �
 | `SSAYUZ_SEARCH_FALLBACK` | `ollama` |
 | `SECRET_KEY` | **Generate** 단추로 무작위 값 만들기 |
 | `OLLAMA_API_KEY` | API 키 |
-| `SSAYUZ_INVITE_CODE` | 내가 정한 초대 코드 |
+| `SSAYUZ_INVITE_CODE` | (선택) 넣으면 이 코드를 아는 사람만 가입해요 |
 | `DATABASE_URL` | 6단계에서 넣어요 |
 
 ## 4. 시험하기
 
-1. 주소로 들어가서 **회원가입** 탭에서 아이디, 비밀번호, **초대 코드**를 넣어요.
+1. 주소로 들어가서 **회원가입** 탭에서 아이디와 비밀번호를 넣어요. (초대 코드를 설정했으면 그것도)
 2. "세종대왕은 언제 태어났어?"처럼 물어봐요.
 3. 진행 단계에 `결과 8개 (Ollama 웹 검색)`처럼 나오면, DuckDuckGo가 서버에서 막혀서 예비 검색으로 찾은 거예요. 정상이에요.
 

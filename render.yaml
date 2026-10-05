@@ -30,5 +30,4 @@ services:
         sync: false
       - key: OLLAMA_API_KEY       # Ollama 클라우드 API 키: 처음 만들 때 직접 입력
         sync: false
-      - key: SSAYUZ_INVITE_CODE   # 회원가입 초대 코드: 처음 만들 때 직접 입력 (아는 사람만 가입)
-        sync: false
+      # 회원가입을 아는 사람만 하게 하려면 Environment 에 SSAYUZ_INVITE_CODE 를 추가해요 (없으면 누구나 가입)
