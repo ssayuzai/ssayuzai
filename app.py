@@ -145,6 +145,12 @@ def fonts(name: str):
     return send_from_directory(WEB_DIR / "fonts", name, max_age=365 * 24 * 3600)
 
 
+@app.get("/google<token>.html")
+def google_site_verification(token: str):
+    """Google Search Console 사이트 확인 파일(web/google○○○.html)을 보내요. 그 이름의 파일만 보내요."""
+    return send_from_directory(WEB_DIR, f"google{token}.html")
+
+
 @app.get("/healthz")
 def healthz():
     """서버가 살아 있는지 확인하는 주소예요. Render 가 가끔 들러서 확인해요."""

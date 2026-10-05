@@ -115,6 +115,15 @@ class AppTest(unittest.TestCase):
     def test_health_check(self):
         self.assertEqual(self.client.get("/healthz").get_json(), {"ok": True})
 
+    def test_google_site_verification(self):
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn('name="google-site-verification"', page)  # 확인 방법 1: meta 태그
+        response = self.client.get("/google8bd26a8d54d97db7.html")  # 확인 방법 2: HTML 파일
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("google-site-verification", response.get_data(as_text=True))
+        response.close()
+        self.assertEqual(self.client.get("/googlenothere.html").status_code, 404)
+
     def test_fonts_are_served_and_cached(self):
         response = self.client.get("/fonts/GmarketSansTTFMedium.woff2")
         self.assertEqual(response.status_code, 200)
