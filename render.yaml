@@ -1,7 +1,7 @@
 # Render 설정 파일 (Blueprint)
 # Render 가 이 파일을 읽고 ssayuz AI 서버를 만들어요. 자세한 순서는 DEPLOY.md 를 보세요.
 #
-# 비밀 값(API 키, 초대 코드)은 이 파일에 적지 않아요. 이 파일은 GitHub에 올라가서 남이 볼 수도 있어요.
+# 비밀 값(API 키, DB 주소)은 이 파일에 적지 않아요. 이 파일은 GitHub에 올라가서 남이 볼 수도 있어요.
 # sync: false 라고 적은 값은 Render 화면에서 처음 만들 때 직접 입력해요.
 services:
   - type: web
@@ -30,4 +30,3 @@ services:
         sync: false
       - key: OLLAMA_API_KEY       # Ollama 클라우드 API 키: 처음 만들 때 직접 입력
         sync: false
-      # 회원가입을 아는 사람만 하게 하려면 Environment 에 SSAYUZ_INVITE_CODE 를 추가해요 (없으면 누구나 가입)

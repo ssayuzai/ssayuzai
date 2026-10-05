@@ -104,14 +104,11 @@ class AppTest(unittest.TestCase):
         # 많이 틀린 뒤에는 맞는 비밀번호도 잠시 막혀요
         self.assertEqual(self.client.post("/api/login", json=ALICE).status_code, 429)
 
-    def test_invite_code_is_required_when_set(self):
-        self.assertFalse(self.client.get("/api/config").get_json()["invite_required"])
-        os.environ["SSAYUZ_INVITE_CODE"] = "test-invite-42"
+    def test_signup_needs_no_invite_code(self):
+        # 초대 코드 설정이 남아 있어도 무시하고 누구나 가입할 수 있어요
+        os.environ["SSAYUZ_INVITE_CODE"] = "old-invite-code"
         try:
-            self.assertTrue(self.client.get("/api/config").get_json()["invite_required"])
-            self.assertEqual(self.signup().status_code, 403)  # 코드 없이 가입하면 거절
-            self.assertEqual(self.client.post("/api/signup", json={**ALICE, "invite_code": "wrong"}).status_code, 403)
-            self.assertEqual(self.client.post("/api/signup", json={**ALICE, "invite_code": "test-invite-42"}).status_code, 201)
+            self.assertEqual(self.signup().status_code, 201)
         finally:
             del os.environ["SSAYUZ_INVITE_CODE"]
 

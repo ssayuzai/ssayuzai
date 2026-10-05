@@ -10,7 +10,6 @@ r"""
 서버 설정은 환경 변수로 해요:
   SECRET_KEY          로그인 상태를 지키는 비밀 열쇠 (없으면 data/secret_key 파일에 만들어요)
   SSAYUZ_HTTPS=1      HTTPS 주소로 서비스할 때 켜요 (로그인 쿠키를 HTTPS로만 보내요)
-  SSAYUZ_INVITE_CODE  이 값을 아는 사람만 회원가입할 수 있어요 (없으면 누구나 가입)
 """
 
 import json
@@ -152,17 +151,6 @@ def healthz():
     return jsonify(ok=True)
 
 
-def _invite_code() -> str:
-    """회원가입에 필요한 초대 코드 (없으면 빈 글자 = 누구나 가입)."""
-    return os.environ.get("SSAYUZ_INVITE_CODE", "")
-
-
-@app.get("/api/config")
-def config():
-    """화면이 알아야 하는 설정을 알려 줘요 (초대 코드 칸을 보여 줄지 등)."""
-    return jsonify(invite_required=bool(_invite_code()))
-
-
 # ---------------------------------------------------------------------------
 # 회원가입 / 로그인
 # ---------------------------------------------------------------------------
@@ -174,10 +162,6 @@ def signup():
         return _error("잘못된 요청이에요.", 415)
     username = str(body.get("username", "")).strip()
     password = str(body.get("password", ""))
-    invite = _invite_code()
-    # 초대 코드를 비교할 때는 글자를 하나씩 맞춰 보는 시간 차이로 코드를 알아내지 못하게 해요
-    if invite and not secrets.compare_digest(str(body.get("invite_code", "")), invite):
-        return _error("초대 코드가 맞지 않아요.", 403)
     if not USERNAME_PATTERN.fullmatch(username):
         return _error("아이디는 한글, 영어, 숫자, _ 로 2~20글자로 만들어 주세요.", 400)
     if not PASSWORD_MIN <= len(password) <= PASSWORD_MAX:
