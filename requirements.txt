@@ -1,0 +1,10 @@
+# ssayuz AI에 필요한 파이썬 패키지 목록
+# 설치: .venv\Scripts\python.exe -m pip install -r requirements.txt
+
+ddgs==9.16.0          # DuckDuckGo 검색
+trafilatura==2.3.0    # 웹페이지에서 본문만 뽑기
+requests==2.34.2      # 웹페이지 받아오기
+ollama==0.6.3         # 내 컴퓨터의 Ollama AI와 대화하기
+protego==0.7.0        # 사이트의 로봇 출입 규칙(robots.txt) 읽기
+flask==3.1.3          # 브라우저에서 쓰는 웹 화면
+gunicorn==26.2.0      # 인터넷 서버(Render, 리눅스)에서 앱을 실행하는 정식 웹 서버

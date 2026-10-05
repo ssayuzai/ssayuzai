@@ -1,0 +1,30 @@
+# Render 설정 파일 (Blueprint)
+# Render 가 이 파일을 읽고 ssayuz AI 서버를 만들어요. 자세한 순서는 DEPLOY.md 를 보세요.
+#
+# 비밀 값(API 키, 초대 코드)은 이 파일에 적지 않아요. 이 파일은 GitHub에 올라가서 남이 볼 수도 있어요.
+# sync: false 라고 적은 값은 Render 화면에서 처음 만들 때 직접 입력해요.
+services:
+  - type: web
+    name: ssayuz-ai
+    runtime: python
+    plan: free                 # 무료 서버 (메모리 512MB, 15분 동안 접속이 없으면 잠들어요)
+    region: singapore          # 한국에서 가장 가까운 지역
+    buildCommand: pip install -r requirements.txt
+    # 일꾼(worker) 1명이 동시에 4개 요청을 받아요. 답이 오래 걸려도 180초까지 기다려요
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 180
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: SSAYUZ_HTTPS         # HTTPS 주소로 서비스해요 (로그인 쿠키 보호)
+        value: "1"
+      - key: SSAYUZ_MODEL         # Ollama 클라우드에서 쓸 모델 (check_setup.py 로 쓸 수 있는 모델을 확인해요)
+        value: gemma4:31b
+      - key: SSAYUZ_READ_DEADLINE # 무료 서버는 CPU가 작아서 페이지 읽기 시간을 넉넉히 줘요
+        value: "12"
+      - key: SECRET_KEY           # 로그인 비밀 열쇠: Render 가 무작위로 만들어 줘요
+        generateValue: true
+      - key: OLLAMA_API_KEY       # Ollama 클라우드 API 키: 처음 만들 때 직접 입력
+        sync: false
+      - key: SSAYUZ_INVITE_CODE   # 회원가입 초대 코드: 처음 만들 때 직접 입력 (아는 사람만 가입)
+        sync: false

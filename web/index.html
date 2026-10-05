@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ssayuz AI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f62e0'/%3E%3Ccircle cx='14' cy='14' r='6.5' fill='none' stroke='white' stroke-width='3'/%3E%3Cpath d='M19 19l6 6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* 색깔은 여기 한 곳에서 정해요. 어두운 화면(다크 모드)일 때는 아래 값으로 바뀌어요 */
+  :root {
+    --bg: #f6f6f3;
+    --surface: #ffffff;
+    --sidebar: #efefeb;
+    --text: #1c1c1e;
+    --muted: #6c6c72;
+    --border: #e3e3de;
+    --accent: #2f62e0;
+    --accent-text: #ffffff;
+    --accent-weak: #e9effc;
+    --ok: #1f8a4c;
+    --code-bg: #f0f0ec;
+    --quote-bar: #c9d6f7;
+    --warn-bg: #fff5e6;
+    --warn: #8a5800;
+    --err-bg: #fdeceb;
+    --err: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416;
+      --surface: #1d1d20;
+      --sidebar: #19191c;
+      --text: #ececef;
+      --muted: #9b9ba3;
+      --border: #2f2f35;
+      --accent: #7c9dff;
+      --accent-text: #0f1424;
+      --accent-weak: #222a40;
+      --ok: #52c486;
+      --code-bg: #2a2a2f;
+      --quote-bar: #3a4a78;
+      --warn-bg: #2c2516;
+      --warn: #e5b85c;
+      --err-bg: #341d1d;
+      --err: #ff8f85;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  /* ---------- 로그인 / 회원가입 ---------- */
+  #auth { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+  .auth-box {
+    width: 100%; max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 24px;
+  }
+  .brand { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+  .brand span { color: var(--accent); }
+  .auth-box > p { margin: 4px 0 20px; color: var(--muted); font-size: 14px; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border-radius: 12px; margin-bottom: 18px; }
+  .tabs button { border: 0; border-radius: 9px; padding: 8px; background: transparent; cursor: pointer; color: var(--muted); }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .auth-box label { display: block; font-size: 14px; margin: 12px 0 4px; }
+  .auth-box input {
+    width: 100%; font: inherit; color: var(--text);
+    padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg);
+  }
+  .auth-box input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .primary {
+    width: 100%; margin-top: 18px;
+    padding: 11px; border: 0; border-radius: 12px;
+    background: var(--accent); color: var(--accent-text);
+    font-weight: 600; cursor: pointer;
+  }
+  .primary:disabled { opacity: .5; cursor: default; }
+  .form-error { margin-top: 12px; color: var(--err); font-size: 14px; min-height: 1em; }
+
+  /* ---------- 앱 화면: 왼쪽 기록 + 오른쪽 대화 ---------- */
+  #app { display: grid; grid-template-columns: 260px 1fr; height: 100%; }
+  aside {
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .side-top { padding: 16px 12px 8px; }
+  .new-chat {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); cursor: pointer; text-align: left; font-weight: 600;
+  }
+  .new-chat:hover { border-color: var(--accent); }
+  .side-title { margin: 14px 12px 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  #conversations { list-style: none; margin: 0; padding: 0 8px 8px; overflow-y: auto; flex: 1; }
+  #conversations li { display: flex; align-items: center; border-radius: 9px; }
+  #conversations li:hover, #conversations li.active { background: var(--surface); }
+  #conversations .open {
+    flex: 1; min-width: 0; text-align: left;
+    padding: 8px 10px; border: 0; background: transparent; cursor: pointer;
+    font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #conversations .remove {
+    flex: none; width: 30px; height: 30px; margin-right: 4px;
+    border: 0; border-radius: 7px; background: transparent; color: var(--muted);
+    cursor: pointer; opacity: 0;
+  }
+  #conversations li:hover .remove, #conversations li.active .remove, #conversations .remove:focus { opacity: 1; }
+  #conversations .remove:hover { background: var(--err-bg); color: var(--err); }
+  .empty-list { padding: 8px 12px; font-size: 13px; color: var(--muted); }
+  .side-bottom {
+    padding: 12px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 14px;
+  }
+  .side-bottom button { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+  .side-bottom button:hover { color: var(--text); background: var(--surface); }
+
+  .chat { position: relative; min-width: 0; overflow-y: auto; }
+  .chat header {
+    max-width: 760px; margin: 0 auto;
+    padding: 18px 16px 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .chat header h1 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+  .chat header h1 span { color: var(--accent); }
+  #menu {
+    display: none;
+    border: 1px solid var(--border); border-radius: 9px;
+    background: var(--surface); padding: 4px 10px; cursor: pointer; font-size: 14px;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 170px; }
+
+  /* 처음 화면 */
+  .welcome { padding: 40px 0 8px; text-align: center; }
+  .welcome h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .welcome p { margin: 0 0 22px; color: var(--muted); }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .examples button {
+    font-size: 14px; padding: 8px 14px;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface); cursor: pointer;
+  }
+  .examples button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 대화 */
+  .question {
+    margin: 28px 0 10px auto;
+    max-width: 85%; width: fit-content;
+    padding: 10px 16px;
+    border-radius: 18px 18px 4px 18px;
+    background: var(--accent); color: var(--accent-text);
+    white-space: pre-wrap;
+  }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; }
+  .understood { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  .understood b { color: var(--text); font-weight: 600; }
+
+  /* 진행 단계 */
+  .steps { list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--muted); }
+  .steps li { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
+  .steps .icon { width: 16px; flex: none; text-align: center; }
+  .steps .label { flex: none; }
+  .steps .note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+  .steps .time { flex: none; font-variant-numeric: tabular-nums; }
+  .steps li.done .icon { color: var(--ok); }
+  .steps li.running { color: var(--text); }
+  .spinner {
+    display: inline-block; width: 11px; height: 11px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+  .section-title { margin: 16px 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .section-title .sub { font-weight: 400; }
+
+  /* 빠른 답 (원문 문장) */
+  .quotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .quotes li {
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--quote-bar);
+    font-size: 15px; color: var(--text);
+  }
+
+  /* AI 정리 */
+  .answer { margin: 0; font-size: 17px; white-space: pre-wrap; }
+  .answer.not-found { color: var(--muted); }
+  .answer code, .quotes code {
+    font-family: Consolas, "Cascadia Code", monospace; font-size: .9em;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 5px;
+  }
+  .cite {
+    display: inline-block; min-width: 20px; margin: 0 1px; padding: 0 5px;
+    font-size: 12px; line-height: 18px; text-align: center; vertical-align: 2px;
+    border-radius: 6px; background: var(--accent-weak); color: var(--accent);
+    text-decoration: none; font-weight: 600;
+  }
+  a.cite:hover { background: var(--accent); color: var(--accent-text); }
+
+  /* 출처 */
+  .sources { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .sources ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .sources a, .sources .item {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+    color: var(--text); text-decoration: none;
+  }
+  .sources a:hover { border-color: var(--accent); }
+  .sources .n { flex: none; }
+  .sources .title { flex: 1; min-width: 0; font-size: 14px; }
+  .sources .host { display: block; font-size: 12px; color: var(--muted); }
+
+  .meta { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .notice { margin-top: 12px; padding: 8px 12px; border-radius: 10px; font-size: 14px; background: var(--warn-bg); color: var(--warn); }
+  .error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--err-bg); color: var(--err); }
+
+  /* 아래 입력창 */
+  .composer {
+    position: fixed; left: 260px; right: 0; bottom: 0;
+    background: linear-gradient(to top, var(--bg) 75%, transparent);
+    padding: 20px 16px 14px;
+  }
+  .composer form {
+    max-width: 760px; margin: 0 auto;
+    display: flex; gap: 8px; align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: 18px;
+    padding: 8px 8px 8px 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
+  }
+  .composer form:focus-within { border-color: var(--accent); }
+  textarea {
+    flex: 1; min-width: 0;
+    font: inherit; color: var(--text); background: transparent;
+    border: 0; outline: 0; resize: none; padding: 6px 0; max-height: 160px;
+  }
+  textarea::placeholder { color: var(--muted); }
+  #send {
+    flex: none; font-weight: 600; font-size: 15px;
+    padding: 8px 16px; border: 0; border-radius: 12px;
+    background: var(--accent); color: var(--accent-text); cursor: pointer;
+  }
+  #send:disabled { opacity: .45; cursor: default; }
+  .composer small { display: block; max-width: 760px; margin: 6px auto 0; text-align: center; font-size: 12px; color: var(--muted); }
+
+  /* 좁은 화면(휴대폰): 기록은 '기록' 단추를 눌러서 열어요 */
+  #scrim { display: none; }
+  @media (max-width: 760px) {
+    #app { grid-template-columns: 1fr; }
+    aside {
+      position: fixed; z-index: 20; top: 0; bottom: 0; left: 0;
+      width: min(280px, 85vw);
+      transform: translateX(-100%); transition: transform .2s;
+    }
+    #app.side-open aside { transform: none; }
+    #app.side-open #scrim { display: block; position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .35); }
+    #menu { display: inline-block; }
+    .composer { left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 로그인 / 회원가입 화면 -->
+<section id="auth" hidden>
+  <div class="auth-box">
+    <h1 class="brand">ssayuz <span>AI</span></h1>
+    <p>인터넷을 찾아보고 출처와 함께 답해요</p>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-login" aria-selected="true">로그인</button>
+      <button type="button" role="tab" id="tab-signup" aria-selected="false">회원가입</button>
+    </div>
+    <form id="auth-form" novalidate>
+      <label for="username">아이디</label>
+      <input id="username" name="username" autocomplete="username" maxlength="20" required>
+      <div class="hint" id="username-hint" hidden>한글, 영어, 숫자, _ 로 2~20글자</div>
+      <label for="password">비밀번호</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+      <div class="hint" id="password-hint" hidden>8글자 이상</div>
+      <div id="confirm-row" hidden>
+        <label for="password2">비밀번호 확인</label>
+        <input id="password2" type="password" autocomplete="new-password" maxlength="128">
+      </div>
+      <div id="invite-row" hidden>
+        <label for="invite">초대 코드</label>
+        <input id="invite" autocomplete="off" maxlength="100">
+        <div class="hint">운영자에게 받은 코드를 넣어 주세요</div>
+      </div>
+      <button class="primary" id="auth-submit" type="submit">로그인</button>
+      <div class="form-error" id="auth-error" role="alert"></div>
+    </form>
+  </div>
+</section>
+
+<!-- 앱 화면 -->
+<div id="app" hidden>
+  <aside id="sidebar" aria-label="대화 기록">
+    <div class="side-top"><button class="new-chat" id="new-chat" type="button">+ 새 대화</button></div>
+    <div class="side-title">지난 대화</div>
+    <ul id="conversations"></ul>
+    <div class="side-bottom">
+      <span id="me"></span>
+      <button id="logout" type="button">로그아웃</button>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <div class="chat" id="chat">
+    <header>
+      <button id="menu" type="button" aria-controls="sidebar">☰ 기록</button>
+      <h1>ssayuz <span>AI</span></h1>
+    </header>
+    <main><div id="thread"></div></main>
+  </div>
+
+  <div class="composer">
+    <form id="ask-form">
+      <textarea id="q" rows="1" maxlength="300" placeholder="질문을 입력하세요 (Enter 보내기, Shift+Enter 줄바꿈)" aria-label="질문"></textarea>
+      <button id="send" type="submit">보내기</button>
+    </form>
+    <small>작은 AI라 틀릴 수 있어요. 출처 링크를 눌러 원문을 꼭 확인해 주세요.</small>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const thread = $("thread");
+  const input = $("q");
+  const sendButton = $("send");
+  let busy = false;             // 질문을 처리하는 중인지
+  let currentConversation = null;  // 지금 보고 있는 대화방 번호 (새 대화면 null)
+  let signupMode = false;       // 회원가입 탭인지
+  let inviteRequired = false;   // 회원가입에 초대 코드가 필요한지 (서버 설정)
+
+  // ---------- 작은 도구들 ----------
+
+  // 태그를 만들고 글자를 넣어요. 글자는 textContent 로 넣어서 HTML로 해석되지 않게 해요(보안)
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  // 걸린 시간을 '1분 5초'처럼 바꿔요
+  function seconds(sec) {
+    sec = Math.round(sec || 0);
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return m ? `${m}분 ${s}초` : `${s}초`;
+  }
+
+  // http, https 주소만 링크로 써요 (javascript: 같은 위험한 주소 막기)
+  function safeUrl(url) {
+    try {
+      const u = new URL(url);
+      return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+    } catch { return null; }
+  }
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
+  }
+
+  function scrollDown() {
+    const chat = $("chat");
+    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  }
+
+  // 서버에 JSON으로 요청해요. 로그인이 풀렸으면 로그인 화면으로 보내요
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401 && path !== "/api/login") showAuth();
+    if (!response.ok) throw new Error(data.error || `서버 오류가 났어요 (${response.status})`);
+    return data;
+  }
+
+  // ---------- 로그인 / 회원가입 ----------
+
+  function setAuthMode(signup) {
+    signupMode = signup;
+    $("tab-login").setAttribute("aria-selected", String(!signup));
+    $("tab-signup").setAttribute("aria-selected", String(signup));
+    $("auth-submit").textContent = signup ? "회원가입" : "로그인";
+    $("confirm-row").hidden = !signup;
+    $("invite-row").hidden = !(signup && inviteRequired);
+    $("username-hint").hidden = !signup;
+    $("password-hint").hidden = !signup;
+    $("password").autocomplete = signup ? "new-password" : "current-password";
+    $("auth-error").textContent = "";
+  }
+
+  function showAuth() {
+    $("app").hidden = true;
+    $("auth").hidden = false;
+    $("username").focus();
+  }
+
+  function showApp(username) {
+    $("auth").hidden = true;
+    $("app").hidden = false;
+    $("me").textContent = username;
+    $("password").value = $("password2").value = "";
+    newConversation();
+    loadConversations();
+  }
+
+  $("tab-login").addEventListener("click", () => setAuthMode(false));
+  $("tab-signup").addEventListener("click", () => setAuthMode(true));
+
+  $("auth-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const username = $("username").value.trim();
+    const password = $("password").value;
+    const error = $("auth-error");
+    if (!username || !password) { error.textContent = "아이디와 비밀번호를 입력해 주세요."; return; }
+    if (signupMode && password !== $("password2").value) { error.textContent = "비밀번호 확인이 달라요."; return; }
+    $("auth-submit").disabled = true;
+    try {
+      const body = signupMode ? { username, password, invite_code: $("invite").value.trim() } : { username, password };
+      const data = await api(signupMode ? "/api/signup" : "/api/login", {
+        method: "POST", body: JSON.stringify(body),
+      });
+      showApp(data.username);
+    } catch (err) {
+      error.textContent = err.message;
+    } finally {
+      $("auth-submit").disabled = false;
+    }
+  });
+
+  $("logout").addEventListener("click", async () => {
+    await api("/api/logout", { method: "POST" }).catch(() => {});
+    thread.replaceChildren();
+    setAuthMode(false);
+    showAuth();
+  });
+
+  // ---------- 대화 기록 ----------
+
+  async function loadConversations() {
+    const list = $("conversations");
+    let data;
+    try { data = await api("/api/conversations"); } catch { return; }
+    list.replaceChildren();
+    if (!data.conversations.length) {
+      list.append(el("li", "empty-list", "아직 대화가 없어요"));
+      return;
+    }
+    for (const c of data.conversations) {
+      const li = el("li", c.id === currentConversation ? "active" : "");
+      const open = el("button", "open", c.title);
+      open.type = "button";
+      open.title = c.title;
+      open.addEventListener("click", () => openConversation(c.id));
+      const remove = el("button", "remove", "✕");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `"${c.title}" 대화 지우기`);
+      remove.addEventListener("click", () => deleteConversation(c.id, c.title));
+      li.append(open, remove);
+      list.append(li);
+    }
+  }
+
+  function closeSidebar() { $("app").classList.remove("side-open"); }
+
+  function newConversation() {
+    if (busy) return;
+    currentConversation = null;
+    thread.replaceChildren(welcome());
+    closeSidebar();
+    loadConversations();
+    input.focus();
+  }
+
+  async function openConversation(id) {
+    if (busy) return;
+    closeSidebar();
+    let data;
+    try { data = await api(`/api/conversations/${id}`); }
+    catch (err) { alert(err.message); return; }
+    currentConversation = id;
+    thread.replaceChildren();
+    for (const turn of data.turns) renderSavedTurn(turn);
+    loadConversations();
+    scrollDown();
+  }
+
+  async function deleteConversation(id, title) {
+    if (busy) return;
+    if (!confirm(`"${title}" 대화를 지울까요? 지우면 되돌릴 수 없어요.`)) return;
+    try { await api(`/api/conversations/${id}`, { method: "DELETE" }); }
+    catch (err) { alert(err.message); return; }
+    if (id === currentConversation) newConversation();
+    else loadConversations();
+  }
+
+  $("new-chat").addEventListener("click", newConversation);
+  $("menu").addEventListener("click", () => $("app").classList.add("side-open"));
+  $("scrim").addEventListener("click", closeSidebar);
+
+  // ---------- 화면 그리기 ----------
+
+  function welcome() {
+    const box = el("section", "welcome");
+    box.append(el("h2", "", "무엇이든 물어보세요"));
+    box.append(el("p", "", "원문에서 찾은 문장을 먼저 보여 드리고, 이어서 AI가 정리해 드려요. '그럼 토성은?'처럼 이어서 물어봐도 돼요."));
+    const examples = el("div", "examples");
+    for (const text of ["목성의 위성은 몇 개야?", "세종대왕은 언제 태어났어?", "김치찌개 맛있게 끓이는 법"]) {
+      const b = el("button", "", text);
+      b.type = "button";
+      b.addEventListener("click", () => { input.value = text; submit(); });
+      examples.append(b);
+    }
+    box.append(examples);
+    return box;
+  }
+
+  // 글을 화면에 그려요. [1] 은 출처 링크 단추로, `코드` 는 코드 모양으로 바꿔요
+  function renderText(box, text, sources) {
+    const pattern = /\[(\d+)\]|`([^`]+)`/g;
+    let last = 0, m;
+    while ((m = pattern.exec(text))) {
+      box.append(text.slice(last, m.index));
+      if (m[1]) box.append(citeChip(Number(m[1]), sources));
+      else box.append(el("code", "", m[2]));
+      last = pattern.lastIndex;
+    }
+    box.append(text.slice(last));
+  }
+
+  function citeChip(n, sources) {
+    const src = sources.find(s => s.n === n);
+    const url = src && safeUrl(src.url);
+    const chip = el(url ? "a" : "span", "cite", String(n));
+    if (url) {
+      chip.href = url;
+      chip.target = "_blank";
+      chip.rel = "noopener noreferrer";
+      chip.title = src.title;
+    }
+    return chip;
+  }
+
+  function renderUnderstood(card, original, understood) {
+    if (!understood || understood === original) return;
+    const box = el("div", "understood", "이전 대화를 보고 이렇게 이해했어요: ");
+    box.append(el("b", "", understood));
+    card.append(box);
+  }
+
+  // 빠른 답: 원문에서 찾은 문장들
+  function renderQuick(card, quick, sec) {
+    if (!quick || !quick.quotes.length) return;
+    const title = el("div", "section-title", "원문에서 찾은 문장 ");
+    if (sec !== undefined) title.append(el("span", "sub", `· ${seconds(sec)}`));
+    const list = el("ul", "quotes");
+    for (const q of quick.quotes) {
+      const li = el("li");
+      renderText(li, q.text, []);
+      li.append(" ", citeChip(q.n, quick.sources));
+      list.append(li);
+    }
+    card.append(title, list);
+  }
+
+  function renderSources(card, heading, list) {
+    if (!list.length) return;
+    const section = el("section", "sources");
+    section.append(el("div", "section-title", heading));
+    const ol = el("ol");
+    for (const s of list) {
+      const url = safeUrl(s.url);
+      const item = el(url ? "a" : "div", "item");
+      if (url) {
+        item.href = url;
+        item.target = "_blank";
+        item.rel = "noopener noreferrer";
+      }
+      item.append(el("span", "cite n", s.n ? String(s.n) : "·"));
+      const title = el("span", "title", s.title || s.url);
+      title.append(el("span", "host", hostOf(s.url)));
+      item.append(title);
+      const li = el("li");
+      li.append(item);
+      ol.append(li);
+    }
+    section.append(ol);
+    card.append(section);
+  }
+
+  // AI 정리 + 출처 + 걸린 시간
+  function renderAnswer(card, answer, sources, cited, droppedCount, totalSec) {
+    const notFound = !cited.length;
+    card.append(el("div", "section-title", "AI 정리"));
+    const p = el("p", notFound ? "answer not-found" : "answer");
+    renderText(p, answer, sources);
+    card.append(p);
+    if (notFound) {
+      card.append(el("div", "notice", "질문을 조금 바꿔서 다시 물어보면 찾을 수도 있어요."));
+      renderSources(card, "읽어 본 페이지", sources.map(s => ({ ...s, n: 0 })));
+    } else {
+      renderSources(card, "출처", sources.filter(s => cited.includes(s.n)));
+    }
+    if (droppedCount) card.append(el("div", "notice", `자료에서 근거를 찾지 못한 문장 ${droppedCount}개는 뺐어요.`));
+    if (totalSec !== null && totalSec !== undefined) card.append(el("div", "meta", `걸린 시간 ${seconds(totalSec)}`));
+  }
+
+  // DB에 저장된 지난 질문과 답을 그려요
+  function renderSavedTurn(turn) {
+    thread.append(el("div", "question", turn.question));
+    const card = el("article", "card");
+    renderUnderstood(card, turn.question, turn.understood);
+    if (!turn.ok) {
+      card.append(el("div", "error", turn.answer));
+    } else {
+      renderQuick(card, turn.quick);
+      renderAnswer(card, turn.answer, turn.sources, turn.cited, turn.dropped, turn.seconds);
+    }
+    thread.append(card);
+  }
+
+  // ---------- 질문하기 ----------
+
+  async function ask(question) {
+    busy = true;
+    sendButton.disabled = true;
+    thread.querySelector(".welcome")?.remove();
+
+    thread.append(el("div", "question", question));
+    const card = el("article", "card");
+    card.setAttribute("aria-busy", "true");
+    const steps = el("ol", "steps");
+    card.append(steps);
+    thread.append(card);
+    scrollDown();
+
+    // 지금 하는 단계와 그 단계가 시작된 시각
+    let current = null, startedAt = 0, ticker = null, tokens = 0, finished = false;
+
+    function startStep(text) {
+      tokens = 0;
+      current = el("li", "running");
+      const icon = el("span", "icon");
+      icon.append(el("span", "spinner"));
+      current.append(icon, el("span", "label", text), el("span", "note"), el("span", "time", "0초"));
+      steps.append(current);
+      startedAt = performance.now();
+      // 0.5초마다 걸린 시간을 고쳐 써서, 멈춘 게 아니라는 걸 보여 줘요
+      ticker = setInterval(() => {
+        current.querySelector(".time").textContent = seconds((performance.now() - startedAt) / 1000);
+      }, 500);
+    }
+
+    function finishStep(note, sec) {
+      clearInterval(ticker);
+      if (!current) return;
+      current.className = "done";
+      current.querySelector(".icon").textContent = "✓";
+      current.querySelector(".note").textContent = note ? `→ ${note}` : "";
+      current.querySelector(".time").textContent = seconds(sec);
+      current = null;
+    }
+
+    function showError(message) {
+      clearInterval(ticker);
+      if (current) {
+        current.className = "";
+        current.querySelector(".icon").textContent = "✕";
+      }
+      card.append(el("div", "error", message));
+    }
+
+    function handle(event) {
+      switch (event.type) {
+        case "conversation":
+          if (currentConversation !== event.id) { currentConversation = event.id; loadConversations(); }
+          break;
+        case "step": startStep(event.text); break;
+        case "done": finishStep(event.note, event.sec); break;
+        case "token":
+          if (current) current.querySelector(".note").textContent = `글 조각 ${++tokens}개`;
+          break;
+        // 카드 안 순서: 진행 단계 → 이해한 질문 → 원문에서 찾은 문장 → AI 정리
+        case "understood": renderUnderstood(card, question, event.question); break;
+        case "quick": renderQuick(card, event.quick, event.sec); scrollDown(); break;
+        case "result":
+          finished = true;
+          renderAnswer(card, event.result.answer, event.result.sources, event.result.cited, event.result.dropped.length, event.sec);
+          scrollDown();
+          break;
+        case "error": finished = true; showError(event.message); break;
+      }
+    }
+
+    try {
+      const response = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, conversation_id: currentConversation }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) showAuth();
+        throw new Error(data.error || `서버 오류가 났어요 (${response.status})`);
+      }
+      // 서버가 한 줄에 하나씩 보내는 진행 상황을 받는 대로 처리해요
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let newline;
+        while ((newline = buffer.indexOf("\n")) >= 0) {
+          const text = buffer.slice(0, newline).trim();
+          buffer = buffer.slice(newline + 1);
+          if (text) handle(JSON.parse(text));
+        }
+      }
+      if (!finished) showError("연결이 끊겼어요. ssayuz AI 프로그램이 켜져 있는지 확인해 주세요.");
+    } catch (err) {
+      showError(err.message.includes("fetch")
+        ? "ssayuz AI 프로그램에 연결하지 못했어요. 프로그램이 켜져 있는지 확인해 주세요."
+        : err.message);
+    } finally {
+      clearInterval(ticker);
+      card.setAttribute("aria-busy", "false");
+      busy = false;
+      sendButton.disabled = false;
+      input.focus();
+      loadConversations();
+    }
+  }
+
+  function submit() {
+    const question = input.value.trim();
+    if (!question || busy) return;
+    input.value = "";
+    resize();
+    ask(question);
+  }
+
+  // 입력창 높이를 글 길이에 맞춰요
+  function resize() {
+    input.style.height = "auto";
+    input.style.height = input.scrollHeight + "px";
+  }
+
+  $("ask-form").addEventListener("submit", e => { e.preventDefault(); submit(); });
+  input.addEventListener("input", resize);
+  input.addEventListener("keydown", e => {
+    // 한글을 조합하는 중에 누른 Enter 는 무시해요 (안 그러면 마지막 글자가 두 번 보내져요)
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+
+  // ---------- 시작 ----------
+  // 서버 설정(초대 코드가 필요한지)을 먼저 알아보고,
+  // 이미 로그인되어 있으면 바로 앱 화면, 아니면 로그인 화면을 보여 줘요
+  api("/api/config").then(c => { inviteRequired = c.invite_required; }).catch(() => {}).finally(() => {
+    api("/api/me").then(data => showApp(data.username)).catch(() => { setAuthMode(false); showAuth(); });
+  });
+</script>
+</body>
+</html>
