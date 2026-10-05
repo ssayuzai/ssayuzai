@@ -67,7 +67,9 @@ def search(query: str, max_results: int = 5) -> list[dict]:
     결과가 하나도 없으면 빈 목록 [] 을 돌려줘요.
     """
     global _duckduckgo_down_until
-    fallback_on = FALLBACK == "ollama" and bool(os.environ.get("OLLAMA_API_KEY"))
+    from brain import api_key  # API 키 읽는 법은 brain.py 한 곳에서만 정해요
+
+    fallback_on = FALLBACK == "ollama" and bool(api_key())
     # 방금 DuckDuckGo가 안 됐으면, 잠시 동안은 기다리지 않고 바로 예비 검색으로 가요
     if fallback_on and time.monotonic() < _duckduckgo_down_until:
         return _ollama_search(query, max_results)
@@ -91,10 +93,17 @@ def _ollama_search(query: str, max_results: int) -> list[dict]:
     """
     import ollama  # 예비 검색을 쓸 때만 불러와요
 
+    from brain import api_key
+
+    client = ollama.Client(host="https://ollama.com", timeout=TIMEOUT * 2,
+                           headers={"authorization": f"Bearer {api_key()}"})
     try:
-        response = ollama.Client(host="https://ollama.com", timeout=TIMEOUT * 2).web_search(
-            query, max_results=min(max_results, 10)
-        )
+        response = client.web_search(query, max_results=min(max_results, 10))
+    except ollama.ResponseError as e:
+        if e.status_code in (401, 403):
+            raise SearchError("예비 검색(Ollama)도 실패했어요: API 키가 맞지 않아요. "
+                              "OLLAMA_API_KEY 에 키만 정확히 들어 있는지 확인해 주세요.") from e
+        raise SearchError(f"예비 검색(Ollama)도 실패했어요: {e}") from e
     except Exception as e:
         raise SearchError(f"예비 검색(Ollama)도 실패했어요: {e}") from e
 

@@ -112,6 +112,14 @@ class AppTest(unittest.TestCase):
         finally:
             del os.environ["SSAYUZ_INVITE_CODE"]
 
+    def test_api_key_is_cleaned(self):
+        # 붙여 넣을 때 딸려 들어간 따옴표, 빈칸, 줄바꿈은 떼어 내요
+        os.environ["OLLAMA_API_KEY"] = '  "abc123.def"\n'
+        try:
+            self.assertEqual(web.brain.api_key(), "abc123.def")
+        finally:
+            del os.environ["OLLAMA_API_KEY"]
+
     def test_health_check(self):
         self.assertEqual(self.client.get("/healthz").get_json(), {"ok": True})
 

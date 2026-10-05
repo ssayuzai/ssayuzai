@@ -91,6 +91,19 @@ def check_cloud_ollama(brain):
     return False
 
 
+def check_cloud_search():
+    """서버의 예비 검색(Ollama 웹 검색)이 이 API 키로 되는지 봐요."""
+    import search
+
+    try:
+        found = search._ollama_search("세종대왕", 3)
+    except search.SearchError as e:
+        print(f"[필요] Ollama 웹 검색(예비 검색)이 안 돼요: {e}")
+        return False
+    print(f"[완료] Ollama 웹 검색(예비 검색)이 돼요 (결과 {len(found)}개)")
+    return True
+
+
 if __name__ == "__main__":
     print("=== ssayuz AI 준비 점검 ===")
     results = [check_python(), check_packages()]
@@ -102,6 +115,7 @@ if __name__ == "__main__":
         results.append(False)
     elif brain.CLOUD:
         results.append(check_cloud_ollama(brain))
+        results.append(check_cloud_search())
     else:
         results.append(check_local_ollama(brain.MODEL))
     print()

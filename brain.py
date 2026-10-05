@@ -15,10 +15,19 @@ from collections import Counter
 
 import ollama
 
+def api_key() -> str:
+    """Ollama 클라우드 API 키를 읽어요.
+
+    붙여 넣을 때 딸려 들어가기 쉬운 앞뒤 빈칸, 줄바꿈, 따옴표("키")는 떼어 내요.
+    (이런 게 섞이면 Ollama가 '인증 실패(401)'로 거절해요)
+    """
+    return os.environ.get("OLLAMA_API_KEY", "").strip().strip("\"'").strip()
+
+
 # 어떤 AI를 쓸지는 '환경 변수'로 정해요. 코드를 고치지 않고 컴퓨터마다 다르게 쓸 수 있어요.
 #   OLLAMA_API_KEY 가 있으면 → Ollama 클라우드(ollama.com)의 AI
 #   없으면                  → 이 컴퓨터에 설치한 Ollama의 AI
-CLOUD = bool(os.environ.get("OLLAMA_API_KEY"))
+CLOUD = bool(api_key())
 # 우리가 쓸 AI 모델 (상업적으로 써도 되는 Apache 2.0 모델)
 # 클라우드에는 qwen3.5:2b 가 없어서 기본 모델이 달라요. SSAYUZ_MODEL 로 바꿀 수 있어요
 MODEL = os.environ.get("SSAYUZ_MODEL", "gemma4:31b" if CLOUD else "qwen3.5:2b")
@@ -55,10 +64,11 @@ REWRITE_RULES = """이전 대화를 보고, 마지막 질문을 혼자 읽어도
 예3) 이전 질문: 에펠탑 높이는 얼마야? / 마지막 질문: 김치찌개 끓이는 법 → {"question": "김치찌개 끓이는 법"}"""
 
 # AI 서버(Ollama)와 연결하는 통로. 답을 쓰는 데 몇 분 걸릴 수 있어서 넉넉히 기다려요.
-# 클라우드일 때는 라이브러리가 OLLAMA_API_KEY 를 알아서 읽어서 '출입증'으로 붙여 줘요
+# 클라우드일 때는 깨끗하게 정리한 API 키를 '출입증'(authorization)으로 붙여요
 _client = ollama.Client(
     host=os.environ.get("OLLAMA_HOST") or ("https://ollama.com" if CLOUD else None),
     timeout=600,
+    headers={"authorization": f"Bearer {api_key()}"} if CLOUD else None,
 )
 # 모델에 '속으로 생각하기' 기능이 있는지 기억해 둬요 (처음 한 번만 물어봐요)
 _thinking_supported: bool | None = None
@@ -108,7 +118,8 @@ def _friendly_error(e: Exception) -> BrainError:
         return BrainError("Ollama가 꺼져 있어요. Ollama를 켜고 다시 해 보세요.")
     status = getattr(e, "status_code", None)
     if CLOUD and status in (401, 403):
-        return BrainError("Ollama 클라우드 API 키가 맞지 않거나, 이 모델을 쓸 권한이 없어요.")
+        return BrainError("Ollama 클라우드 API 키가 맞지 않거나, 이 모델을 쓸 권한이 없어요. "
+                          "OLLAMA_API_KEY 에 키만 정확히 들어 있는지 확인해 주세요.")
     if CLOUD and status == 429:
         return BrainError("Ollama 클라우드 무료 사용량을 다 썼거나 너무 자주 물어봤어요. 잠시 뒤에 다시 해 보세요.")
     if status == 404:
